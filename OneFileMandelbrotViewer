@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>∞ Fractal Abyss v2.1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;overflow:hidden;font-family:'Space Mono',monospace;color:#e0e0e0;cursor:crosshair;user-select:none}
+  canvas{display:block;width:100vw;height:100vh}
+  #hud{position:fixed;top:0;left:0;right:0;padding:14px 20px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:10}
+  #hud>*{pointer-events:auto}
+  .tblock{display:flex;flex-direction:column;gap:1px}
+  .tblock h1{font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#fff;text-shadow:0 0 20px rgba(120,200,255,.4)}
+  .tblock .sub{font-size:10px;color:rgba(255,255,255,.3);letter-spacing:1px}
+  .stats{text-align:right;font-size:11px;line-height:1.7;color:rgba(255,255,255,.45)}
+  .stats .v{color:rgba(120,200,255,.85)}
+  #ctl{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;z-index:10;background:rgba(0,0,0,.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.07);border-radius:32px;padding:6px 14px;flex-wrap:wrap;justify-content:center;max-width:95vw}
+  #ctl button{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#bbb;font-family:inherit;font-size:11px;padding:5px 12px;border-radius:18px;cursor:pointer;transition:all .15s;white-space:nowrap}
+  #ctl button:hover{background:rgba(120,200,255,.15);border-color:rgba(120,200,255,.3);color:#fff}
+  #ctl button.active{background:rgba(120,200,255,.2);border-color:rgba(120,200,255,.4);color:#fff}
+  .sep{width:1px;height:18px;background:rgba(255,255,255,.08)}
+  #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);border:1px solid rgba(120,200,255,.25);border-radius:8px;padding:8px 20px;font-size:11px;color:rgba(120,200,255,.9);pointer-events:none;opacity:0;transition:opacity .3s;z-index:20}
+  #toast.show{opacity:1}
+  #help{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(16px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .35s}
+  #help.h{opacity:0;pointer-events:none}
+  .hcard{background:rgba(12,16,26,.95);border:1px solid rgba(120,200,255,.12);border-radius:14px;padding:36px 44px;max-width:520px;text-align:center}
+  .hcard h2{font-size:20px;letter-spacing:4px;margin-bottom:20px;color:#fff;text-shadow:0 0 28px rgba(120,200,255,.25)}
+  .hcard p{font-size:13px;line-height:2;color:rgba(255,255,255,.55);margin-bottom:6px}
+  .hcard kbd{display:inline-block;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:3px;padding:1px 6px;font-family:inherit;font-size:11px;color:rgba(120,200,255,.85)}
+  .hcard .go{margin-top:24px;background:linear-gradient(135deg,rgba(80,160,255,.25),rgba(120,80,255,.25));border:1px solid rgba(120,200,255,.25);color:#fff;font-family:inherit;font-size:13px;padding:9px 28px;border-radius:26px;cursor:pointer;letter-spacing:2px;transition:all .25s}
+  .hcard .go:hover{background:linear-gradient(135deg,rgba(80,160,255,.45),rgba(120,80,255,.45));transform:scale(1.04)}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <div class="tblock"><h1>Fractal Abyss</h1><div class="sub" id="hud-sub">DF-Perturbation · SA0 · DE</div></div>
+  <div class="stats">
+    <div>Zoom <span class="v" id="sd-z">1.00×</span></div>
+    <div>Iters <span class="v" id="sd-i">300</span></div>
+    <div>Skip <span class="v" id="sd-s">0</span></div>
+    <div>Prec <span class="v" id="sd-l">MW2</span></div>
+    <div>Depth <span class="v" id="sd-d">0d</span></div>
+    <div>Mode <span class="v" id="sd-m">DF</span></div>
+    <div>Color <span class="v" id="sd-c">Smooth</span></div>
+  </div>
+</div>
+<div id="ctl">
+  <button id="b-zi">+ Zoom</button>
+  <button id="b-zo">− Zoom</button>
+  <div class="sep"></div>
+  <button id="b-p">Palette</button>
+  <button id="b-c">Color</button>
+  <div class="sep"></div>
+  <button id="b-j">Julia ⚠</button>
+  <button id="b-l">Loc ▸</button>
+  <button id="b-k">◂ Loc</button>
+  <button id="b-b">★</button>
+  <button id="b-x">📷</button>
+  <div class="sep"></div>
+  <button id="b-r">Reset</button>
+  <button id="b-h">?</button>
+</div>
+<div id="toast"></div>
+<div id="help">
+  <div class="hcard">
+    <h2>∞ FRACTAL ABYSS</h2>
+    <p><kbd>Scroll</kbd> zoom toward cursor</p>
+    <p><kbd>Click & Drag</kbd> to pan</p>
+    <p><kbd>P</kbd> palette · <kbd>C</kbd> color mode</p>
+    <p><kbd>J</kbd> Julia toggle · <kbd>S</kbd> screenshot</p>
+    <p><kbd>L</kbd> next location · <kbd>K</kbd> prev location</p>
+    <p><kbd>B</kbd> bookmark current view · <kbd>Shift+B</kbd> delete last</p>
+    <p><kbd>I</kbd> copy coordinates · <kbd>R</kbd> reset</p>
+    <p style="margin-top:18px;font-size:11px;color:rgba(255,255,255,.25)">
+      v2.1 — DF perturbation · adaptive SA(3–7)<br>
+      Distance estimation · 4 coloring modes<br>
+      Julia sets · Arbitrary depth · Glitch recovery<br>
+      22 locations · Persistent bookmarks · MW precision
+    </p>
+    <button class="go" id="b-go">ENTER THE ABYSS</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  FRACTAL ABYSS v2.1.1
+//  DF-Perturbation · Order-7 Adaptive SA · DE · Orbit Trapping
+//  Unified subsystem architecture
+//  v2.1.1: Camera stability fixes for depth 45-55d
+// ═══════════════════════════════════════════════════════════════
+
+var canvas = document.getElementById('cv');
+var gl = canvas.getContext('webgl2', {antialias:false, depth:false, stencil:false, preserveDrawingBuffer:true});
+var isWebGL2 = !!gl;
+if (!gl) {
+  gl = canvas.getContext('webgl', {antialias:false, depth:false, stencil:false, preserveDrawingBuffer:true});
+  isWebGL2 = false;
+}
+if (!gl) { document.body.innerHTML = '<h1 style="color:red;text-align:center;margin-top:40vh">WebGL required</h1>'; throw 0; }
+var extF;
+if (isWebGL2) {
+  gl.getExtension('EXT_color_buffer_float');
+  gl.getExtension('OES_texture_float_linear');
+  extF = true;
+} else {
+  extF = gl.getExtension('OES_texture_float');
+  gl.getExtension('OES_texture_float_linear');
+}
+var texInternalFmt = isWebGL2 ? gl.RGBA32F : gl.RGBA;
+
+var VS = isWebGL2
+  ? '#version 300 es\nin vec2 a_pos;void main(){gl_Position=vec4(a_pos,0,1);}'
+  : 'attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0,1);}';
+
+// ═══════════════════════════════════════════════════════════════
+// FRAGMENT SHADER
+// ═══════════════════════════════════════════════════════════════
+
+var FS = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+
+uniform vec2  u_res;
+uniform int   u_mode;
+uniform int   u_maxIter;
+uniform float u_palette;
+uniform float u_colShift;
+uniform float u_logPS;
+uniform int   u_colorMode;
+uniform int   u_julia;
+
+uniform float u_cxhi, u_cxlo, u_cyhi, u_cylo;
+uniform float u_sMant, u_sExp;
+uniform float u_jrHi, u_jrLo, u_jiHi, u_jiLo;
+
+uniform float u_psMant, u_psExp;
+uniform vec2  u_refPix;
+uniform int   u_refLen;
+uniform sampler2D u_refTex;
+uniform float u_refTexW;
+uniform float u_rcHi, u_rcLo, u_riHi, u_riLo;
+
+uniform vec4  u_saA, u_saB, u_saC, u_saD, u_saE, u_saF, u_saG;
+uniform int   u_skipN;
+uniform float u_saLogDeriv;
+
+uniform int   u_rescaled;
+uniform vec4  u_rsaA;
+uniform int   u_wfInitExp;
+
+vec2 twoSum(float a, float b) {
+  float s = a + b; float v = s - a;
+  return vec2(s, (a-(s-v))+(b-v));
+}
+vec2 quickTwoSum(float a, float b) {
+  float s = a + b; return vec2(s, b-(s-a));
+}
+vec2 twoProd(float a, float b) {
+  float p = a*b;
+  float ca=4097.0*a; float ah=ca-(ca-a); float al=a-ah;
+  float cb=4097.0*b; float bh=cb-(cb-b); float bl=b-bh;
+  return vec2(p, ((ah*bh-p)+ah*bl+al*bh)+al*bl);
+}
+vec2 dfAdd(vec2 a, vec2 b) {
+  vec2 s=twoSum(a.x,b.x); s.y+=a.y+b.y; return quickTwoSum(s.x,s.y);
+}
+vec2 dfSub(vec2 a, vec2 b) { return dfAdd(a,vec2(-b.x,-b.y)); }
+vec2 dfMul(vec2 a, vec2 b) {
+  vec2 p=twoProd(a.x,b.x); p.y+=a.x*b.y+a.y*b.x; return quickTwoSum(p.x,p.y);
+}
+vec2 dfMulF(vec2 a, float b) {
+  vec2 p=twoProd(a.x,b); p.y+=a.y*b; return quickTwoSum(p.x,p.y);
+}
+
+vec3 getPal(float t) {
+  if (u_palette < 0.5) return vec3(9.0*(1.0-t)*t*t*t, 15.0*(1.0-t)*(1.0-t)*t*t, 8.5*(1.0-t)*(1.0-t)*(1.0-t)*t);
+  if (u_palette < 1.5) return vec3(.5+.5*sin(6.283*t), .5+.5*sin(6.283*t+2.094), .5+.5*sin(6.283*t+4.189));
+  if (u_palette < 2.5) return vec3(t<.5?t*1.57:.78+(t-.5)*.44, max(0.,(t-.25)*1.73), max(0.,(t-.6)*2.5));
+  if (u_palette < 3.5) return vec3(.5+.5*sin(6.283*t*1.2), .5+.5*sin(6.283*(t*1.2+.6)), .5+.5*sin(6.283*(t*1.2+.3)));
+  if (u_palette < 4.5) return vec3(.12+.27*sin(3.14*t*.8), .39+.61*t, .67+.33*cos(3.14*t*.4));
+  if (u_palette < 5.5) return vec3(clamp(t*3.0,0.,1.), clamp(t*3.0-1.,0.,1.), clamp(t*3.0-2.,0.,1.));
+  if (u_palette < 6.5) return vec3(.5+.5*cos(6.28*t), .5+.5*cos(6.28*t+4.19), .5+.5*cos(6.28*t+2.09));
+  return vec3(t, t*0.8, t*0.5);
+}
+
+vec3 colorize(float it, float mag2, float logDer, float trap, float stSum, float stLast, float stN) {
+  float t;
+  if (u_colorMode == 0) {
+    float sn = it + 1.0 - log(log(mag2)*0.5) / log(2.0);
+    t = mod(sn * 0.02 + u_colShift, 1.0);
+  } else if (u_colorMode == 1) {
+    float avgN = stSum / max(stN, 1.0);
+    float avgP = (stN > 1.0) ? ((stSum - stLast) / (stN - 1.0)) : avgN;
+    float logR = 0.5 * log(max(mag2, 1.1));
+    float f = clamp(1.0 - log(logR / log(16.0)) / log(2.0), 0.0, 1.0);
+    t = mod(mix(avgP, avgN, f) + u_colShift, 1.0);
+  } else {
+    t = mod(-log(max(trap, 1e-10))*0.3 + u_colShift, 1.0);
+  }
+  vec3 col = getPal(t);
+  float halfLnM = 0.5 * log(mag2);
+  float logDE = halfLnM + log(max(halfLnM, 1e-10)) - logDer - 0.6931472;
+  float dePix = exp(clamp(logDE + u_logPS, -20.0, 20.0));
+  float edge = smoothstep(0.0, 0.8, dePix);
+  float ds = (u_colorMode == 0) ? 0.88 : 0.5;
+  ds *= clamp(400.0 / max(it, 1.0), 0.0, 1.0);
+  col *= (1.0-ds) + ds*edge;
+  return col;
+}
+
+vec4 refAt(int i) {
+  return texture(u_refTex, vec2((float(i)+0.5)/u_refTexW, 0.5));
+}
+
+void main() {
+  float pixX = gl_FragCoord.x - u_res.x*0.5;
+  float pixY = gl_FragCoord.y - u_res.y*0.5;
+
+  vec3 color = vec3(0.008, 0.012, 0.03);
+  float iter=0.0; bool escaped=false; float lastMag2=0.0;
+  float logDeriv=0.0, trapDist=1e10, stripeSum=0.0, stripeLast=0.0, stripeN=0.0;
+
+  if (u_mode == 0) {
+    vec2 sd = twoProd(u_sMant, exp2(u_sExp));
+    vec2 pxR = dfAdd(vec2(u_cxhi,u_cxlo), dfMulF(sd,pixX));
+    vec2 pxI = dfAdd(vec2(u_cyhi,u_cylo), dfMulF(sd,pixY));
+
+    vec2 cr, ci, zr, zi;
+    if (u_julia == 0) {
+      cr=pxR; ci=pxI; zr=vec2(0,0); zi=vec2(0,0);
+    } else {
+      zr=pxR; zi=pxI; cr=vec2(u_jrHi,u_jrLo); ci=vec2(u_jiHi,u_jiLo);
+    }
+
+    bool skipC = false;
+    if (u_julia == 0) {
+      float crf=cr.x, cif=ci.x, cq=crf-0.25;
+      float q=cq*cq+cif*cif;
+      skipC = q*(q+cq) <= 0.25*cif*cif;
+      if (!skipC) { float c1=crf+1.0; skipC=c1*c1+cif*cif<=0.0625; }
+    }
+
+    if (!skipC) {
+      vec2 zr2=dfMul(zr,zr), zi2=dfMul(zi,zi);
+      for (int i=0; i<8192; i++) {
+        if (i>=u_maxIter) break;
+        lastMag2 = zr2.x+zi2.x;
+        if (lastMag2 > 256.0) { escaped=true; break; }
+        if (lastMag2 > 1e-20) logDeriv += 0.6931472+0.5*log(lastMag2);
+
+        if (u_colorMode==1) { if(lastMag2>1.0){float sa=0.5+0.5*sin(3.0*atan(zi.x,zr.x)); stripeSum+=sa; stripeLast=sa; stripeN+=1.0;} }
+        else if (u_colorMode==2) { trapDist=min(trapDist,abs(sqrt(lastMag2)-1.5)); }
+        else if (u_colorMode==3) { trapDist=min(trapDist,min(abs(zr.x),abs(zi.x))); }
+
+        vec2 zri=dfMul(zr,zi);
+        zi=dfAdd(dfAdd(zri,zri),ci);
+        zr=dfAdd(dfSub(zr2,zi2),cr);
+        zr2=dfMul(zr,zr); zi2=dfMul(zi,zi);
+        iter += 1.0;
+      }
+      if (!escaped) lastMag2=zr2.x+zi2.x;
+    }
+
+  } else {
+    float dpx = pixX-u_refPix.x, dpy = pixY-u_refPix.y;
+
+    bool inWideFloat = (u_rescaled == 1);
+    float wfr = 0.0, wfi = 0.0;
+    int wfe = 0;
+    float dcr_m = dpx, dci_m = dpy;
+    int dc_e = u_wfInitExp;
+
+    vec2 dr = vec2(0.0), di = vec2(0.0);
+    vec2 dcr = vec2(0.0), dci = vec2(0.0);
+
+    if (inWideFloat) {
+      float ar = u_rsaA.x, ai = u_rsaA.z;
+      float psm = u_psMant;
+      wfr = (ar*dpx - ai*dpy) * psm;
+      wfi = (ar*dpy + ai*dpx) * psm;
+      wfe = u_wfInitExp;
+      dcr_m = dpx * psm;
+      dci_m = dpy * psm;
+
+      float mx = max(abs(wfr), abs(wfi));
+      if (mx > 0.0) {
+        int adj = int(floor(log2(mx)));
+        float sc = exp2(float(-adj));
+        wfr *= sc; wfi *= sc;
+        wfe += adj;
+      }
+    } else {
+      vec2 ps_df = twoProd(u_psMant, exp2(u_psExp));
+      dcr = dfMulF(ps_df,dpx); dci = dfMulF(ps_df,dpy);
+
+      float p2r=dpx*dpx-dpy*dpy,         p2i=2.0*dpx*dpy;
+      float p3r=p2r*dpx-p2i*dpy,         p3i=p2r*dpy+p2i*dpx;
+      float p4r=p2r*p2r-p2i*p2i,         p4i=2.0*p2r*p2i;
+      float p5r=p4r*dpx-p4i*dpy,         p5i=p4r*dpy+p4i*dpx;
+      float p6r=p3r*p3r-p3i*p3i,         p6i=2.0*p3r*p3i;
+      float p7r=p4r*p3r-p4i*p3i,         p7i=p4r*p3i+p4i*p3r;
+
+      vec2 t1r=dfSub(dfMulF(u_saA.xy,dpx),dfMulF(u_saA.zw,dpy));
+      vec2 t1i=dfAdd(dfMulF(u_saA.xy,dpy),dfMulF(u_saA.zw,dpx));
+      vec2 t2r=dfSub(dfMulF(u_saB.xy,p2r),dfMulF(u_saB.zw,p2i));
+      vec2 t2i=dfAdd(dfMulF(u_saB.xy,p2i),dfMulF(u_saB.zw,p2r));
+      vec2 t3r=dfSub(dfMulF(u_saC.xy,p3r),dfMulF(u_saC.zw,p3i));
+      vec2 t3i=dfAdd(dfMulF(u_saC.xy,p3i),dfMulF(u_saC.zw,p3r));
+      vec2 t4r=dfSub(dfMulF(u_saD.xy,p4r),dfMulF(u_saD.zw,p4i));
+      vec2 t4i=dfAdd(dfMulF(u_saD.xy,p4i),dfMulF(u_saD.zw,p4r));
+      vec2 t5r=dfSub(dfMulF(u_saE.xy,p5r),dfMulF(u_saE.zw,p5i));
+      vec2 t5i=dfAdd(dfMulF(u_saE.xy,p5i),dfMulF(u_saE.zw,p5r));
+      vec2 t6r=dfSub(dfMulF(u_saF.xy,p6r),dfMulF(u_saF.zw,p6i));
+      vec2 t6i=dfAdd(dfMulF(u_saF.xy,p6i),dfMulF(u_saF.zw,p6r));
+      vec2 t7r=dfSub(dfMulF(u_saG.xy,p7r),dfMulF(u_saG.zw,p7i));
+      vec2 t7i=dfAdd(dfMulF(u_saG.xy,p7i),dfMulF(u_saG.zw,p7r));
+
+      dr = dfAdd(dfAdd(dfAdd(t1r,t2r),dfAdd(t3r,t4r)),dfAdd(dfAdd(t5r,t6r),t7r));
+      di = dfAdd(dfAdd(dfAdd(t1i,t2i),dfAdd(t3i,t4i)),dfAdd(dfAdd(t5i,t6i),t7i));
+
+      if (u_julia == 1 && u_skipN == 0) { dr = dcr; di = dci; }
+      if (u_julia == 1) { dcr = vec2(0.0); dci = vec2(0.0); }
+    }
+
+    iter = float(u_skipN);
+    logDeriv = u_saLogDeriv;
+
+    for (int n=0; n<8192; n++) {
+      int idx = n + u_skipN;
+      if (idx>=u_maxIter) break;
+      if (idx>=u_refLen-1) break;
+
+      vec4 rA = refAt(idx);
+      vec2 Rr=vec2(rA.x,rA.y), Ri=vec2(rA.z,rA.w);
+
+      if (inWideFloat) {
+        float Zr = Rr.x, Zi = Ri.x;
+        float ZnM2 = Zr*Zr+Zi*Zi;
+        if (ZnM2 > 1e-20) logDeriv += 0.6931472+0.5*log(ZnM2);
+
+        if (u_colorMode==1) { if(ZnM2>1.0){float sa=0.5+0.5*sin(3.0*atan(Zi,Zr)); stripeSum+=sa; stripeLast=sa; stripeN+=1.0;} }
+        else if (u_colorMode==2) { trapDist=min(trapDist,abs(sqrt(ZnM2)-1.5)); }
+        else if (u_colorMode==3) { trapDist=min(trapDist,min(abs(Zr),abs(Zi))); }
+
+        float nr = 2.0*(Zr*wfr - Zi*wfi);
+        float ni = 2.0*(Zr*wfi + Zi*wfr);
+
+        int dExp = wfe - dc_e;
+        if (dExp >= 0 && dExp < 24) {
+          float sc = exp2(float(-dExp));
+          nr += dcr_m * sc;
+          ni += dci_m * sc;
+        } else if (dExp < 0 && dExp > -24) {
+          float sc = exp2(float(dExp));
+          nr = nr * sc + dcr_m;
+          ni = ni * sc + dci_m;
+          wfe = dc_e;
+        }
+
+        wfr = nr;
+        wfi = ni;
+
+        float mx = max(abs(wfr), abs(wfi));
+        if (mx > 0.0) {
+          int adj = int(floor(log2(mx)));
+          if (adj != 0) {
+            float sc = exp2(float(-adj));
+            wfr *= sc; wfi *= sc;
+            wfe += adj;
+          }
+        }
+
+        if (wfr != wfr || wfi != wfi) {
+          escaped = true;
+          lastMag2 = 1e10;
+          break;
+        }
+
+        iter += 1.0;
+
+        if (wfe >= 4) {
+          escaped = true;
+          float logEsc = float(wfe) + log2(max(mx, 0.5));
+          lastMag2 = exp2(min(logEsc, 20.0));
+          break;
+        }
+
+        if (wfe >= -20) {
+          float sc = exp2(float(wfe));
+          dr = vec2(wfr * sc, 0.0);
+          di = vec2(wfi * sc, 0.0);
+          float dcsc = exp2(float(dc_e));
+          if (abs(dcsc) > 1e-38) {
+            dcr = vec2(dcr_m * dcsc, 0.0);
+            dci = vec2(dci_m * dcsc, 0.0);
+          }
+          inWideFloat = false;
+          continue;
+        }
+
+        vec4 nrA = refAt(idx+1);
+        float nZr = nrA.x, nZi = nrA.z;
+        float refM2 = nZr*nZr + nZi*nZi;
+        if (refM2 > 256.0) {
+          float wfM2 = wfr*wfr + wfi*wfi;
+          if (wfM2 > 1e4) {
+            escaped = true;
+            float logEsc = float(wfe) + log2(sqrt(wfM2));
+            lastMag2 = 256.0 + min(logEsc * 0.5 + 30.0, 50.0);
+          }
+          break;
+        }
+
+      } else {
+        vec2 ZfR = dfAdd(Rr, dr);
+        vec2 ZfI = dfAdd(Ri, di);
+        float Zr = ZfR.x, Zi = ZfI.x;
+        float ZnM2 = Zr*Zr+Zi*Zi;
+        if (ZnM2 > 1e-20) logDeriv += 0.6931472+0.5*log(ZnM2);
+
+        if (u_colorMode==1) { if(ZnM2>1.0){float sa=0.5+0.5*sin(3.0*atan(Zi,Zr)); stripeSum+=sa; stripeLast=sa; stripeN+=1.0;} }
+        else if (u_colorMode==2) { trapDist=min(trapDist,abs(sqrt(ZnM2)-1.5)); }
+        else if (u_colorMode==3) { trapDist=min(trapDist,min(abs(Zr),abs(Zi))); }
+
+        float dM2 = dr.x*dr.x + di.x*di.x;
+        bool glitch = (ZnM2 < dM2*0.001) && (dM2 > 1e-20);
+
+        if (glitch) {
+          vec2 zf2r = dfSub(dfMul(ZfR,ZfR), dfMul(ZfI,ZfI));
+          vec2 zf2i = dfMulF(dfMul(ZfR,ZfI), 2.0);
+          vec4 nrA2 = refAt(idx+1);
+          dr = dfSub(dfAdd(zf2r, vec2(u_rcHi,u_rcLo)), vec2(nrA2.x, nrA2.y));
+          di = dfSub(dfAdd(zf2i, vec2(u_riHi,u_riLo)), vec2(nrA2.z, nrA2.w));
+          dr = dfAdd(dr, dcr); di = dfAdd(di, dci);
+        } else {
+          vec2 zd_r=dfSub(dfMul(Rr,dr),dfMul(Ri,di));
+          vec2 zd_i=dfAdd(dfMul(Rr,di),dfMul(Ri,dr));
+          vec2 dsq_r=dfSub(dfMul(dr,dr),dfMul(di,di));
+          vec2 dsq_i=dfMulF(dfMul(dr,di),2.0);
+          dr=dfAdd(dfMulF(zd_r,2.0),dsq_r);
+          di=dfAdd(dfMulF(zd_i,2.0),dsq_i);
+          if (u_julia == 0) { dr=dfAdd(dr,dcr); di=dfAdd(di,dci); }
+        }
+
+        if (dr.x!=dr.x || di.x!=di.x) break;
+
+        vec4 nrA=refAt(idx+1);
+        vec2 nRr=vec2(nrA.x,nrA.y), nRi=vec2(nrA.z,nrA.w);
+        vec2 fR = dfAdd(nRr, dr);
+        vec2 fI = dfAdd(nRi, di);
+        lastMag2 = fR.x*fR.x+fI.x*fI.x;
+        iter += 1.0;
+        if (lastMag2 > 256.0) { escaped=true; break; }
+      }
+    }
+
+    if (!escaped && int(iter)<u_maxIter && !inWideFloat) {
+      float ps_val = u_psMant * exp2(u_psExp);
+      if (abs(ps_val) > 1e-14) {
+        int fIdx = int(iter);
+        if (fIdx >= u_refLen) fIdx = u_refLen - 1;
+        vec4 lR=refAt(fIdx);
+        vec2 zr=dfAdd(vec2(lR.x,lR.y),dr);
+        vec2 zi=dfAdd(vec2(lR.z,lR.w),di);
+        vec2 cr, ci;
+        if (u_julia == 0) {
+          cr=dfAdd(vec2(u_rcHi,u_rcLo),dcr);
+          ci=dfAdd(vec2(u_riHi,u_riLo),dci);
+        } else {
+          cr=vec2(u_jrHi,u_jrLo);
+          ci=vec2(u_jiHi,u_jiLo);
+        }
+        vec2 zr2=dfMul(zr,zr), zi2=dfMul(zi,zi);
+        for (int j=0; j<8192; j++) {
+          if (int(iter)>=u_maxIter) break;
+          lastMag2=zr2.x+zi2.x;
+          if (lastMag2>256.0) { escaped=true; break; }
+          if (lastMag2>1e-20) logDeriv+=0.6931472+0.5*log(lastMag2);
+          if (u_colorMode==1) { if(lastMag2>1.0){float sa=0.5+0.5*sin(3.0*atan(zi.x,zr.x)); stripeSum+=sa; stripeLast=sa; stripeN+=1.0;} }
+          else if (u_colorMode==2) { trapDist=min(trapDist,abs(sqrt(lastMag2)-1.5)); }
+          else if (u_colorMode==3) { trapDist=min(trapDist,min(abs(zr.x),abs(zi.x))); }
+          vec2 zri=dfMul(zr,zi);
+          zi=dfAdd(dfAdd(zri,zri),ci);
+          zr=dfAdd(dfSub(zr2,zi2),cr);
+          zr2=dfMul(zr,zr); zi2=dfMul(zi,zi);
+          iter+=1.0;
+        }
+        if (!escaped) lastMag2=zr2.x+zi2.x;
+      }
+    }
+  }
+
+  if (escaped) {
+    color = colorize(iter, lastMag2, logDeriv, trapDist, stripeSum, stripeLast, stripeN);
+  } else if (u_colorMode >= 2 && trapDist < 1e8) {
+    float td = max(trapDist, 1e-10);
+    float t = mod(-log(td)*0.3 + u_colShift, 1.0);
+    color = getPal(t) * 0.35 * clamp(1.0/(1.0+td*5.0), 0.0, 1.0);
+  }
+  fragColor = vec4(color, 1.0);
+}
+`;
+if (!isWebGL2) {
+  FS = FS.replace('#version 300 es\n', '')
+         .replace('out vec4 fragColor;', '')
+         .replace(/\bfragColor\b/g, 'gl_FragColor')
+         .replace(/\btexture\s*\(/g, 'texture2D(');
+}
+
+function makeShader(src, type) {
+  var sh = gl.createShader(type);
+  gl.shaderSource(sh, src); gl.compileShader(sh);
+  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
+    console.error('Shader:', gl.getShaderInfoLog(sh));
+  return sh;
+}
+var prog = gl.createProgram();
+gl.attachShader(prog, makeShader(VS, gl.VERTEX_SHADER));
+gl.attachShader(prog, makeShader(FS, gl.FRAGMENT_SHADER));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+  console.error('Link:', gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+var buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+var aP = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(aP);
+gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 0, 0);
+
+var U = {};
+[
+  'u_res','u_mode','u_maxIter','u_palette','u_colShift','u_logPS',
+  'u_colorMode','u_julia',
+  'u_cxhi','u_cxlo','u_cyhi','u_cylo','u_sMant','u_sExp',
+  'u_jrHi','u_jrLo','u_jiHi','u_jiLo',
+  'u_psMant','u_psExp','u_refPix','u_refLen','u_refTex','u_refTexW',
+  'u_rcHi','u_rcLo','u_riHi','u_riLo',
+  'u_saA','u_saB','u_saC','u_saD','u_saE','u_saF','u_saG',
+  'u_skipN','u_saLogDeriv',
+  'u_rescaled','u_rsaA','u_wfInitExp'
+].forEach(function(n) { U[n] = gl.getUniformLocation(prog, n); });
+
+var refTex = gl.createTexture();
+gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, refTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texImage2D(gl.TEXTURE_2D, 0, texInternalFmt, 1, 1, 0, gl.RGBA, gl.FLOAT, new Float32Array(4));
+
+
+// ═══════════════════════════════════════════════════════════════
+// MULTI-WORD FLOAT ARITHMETIC
+// ═══════════════════════════════════════════════════════════════
+
+var MW_N = 2;
+
+function ts(a,b){var s=a+b,v=s-a;return[s,(a-(s-v))+(b-v)];}
+function tp(a,b){var p=a*b,c=134217729*a,ah=c-(c-a),al=a-ah;c=134217729*b;var bh=c-(c-b),bl=b-bh;return[p,((ah*bh-p)+ah*bl+al*bh)+al*bl];}
+
+function mwRn(a){
+  var n=a.length;
+  for(var i=n-2;i>=0;i--){var t=ts(a[i],a[i+1]);a[i]=t[0];a[i+1]=t[1];}
+  for(var i=0;i<n-1;i++){var t=ts(a[i],a[i+1]);a[i]=t[0];a[i+1]=t[1];}
+}
+function mwAcc(r,t){for(var i=0;i<r.length;i++){var s=ts(r[i],t);r[i]=s[0];t=s[1];}}
+
+function mwNew(){return new Float64Array(MW_N);}
+function mwOf(v){var a=mwNew();a[0]=v;return a;}
+function mwCp(a){return new Float64Array(a);}
+function mwAddF(a,f){var r=mwCp(a);mwAcc(r,f);return r;}
+function mwAdd(a,b){var r=mwCp(a);for(var i=0;i<b.length&&i<r.length;i++)mwAcc(r,b[i]);mwRn(r);return r;}
+function mwSub(a,b){var r=mwCp(a);for(var i=0;i<b.length&&i<r.length;i++)mwAcc(r,-b[i]);mwRn(r);return r;}
+
+function mwMul(a,b){
+  var n=a.length;
+  if(n<=2){
+    var p=tp(a[0],b[0]);
+    p[1]+=a[0]*(b[1]||0)+(a[1]||0)*b[0];
+    var s=ts(p[0],p[1]);
+    var r=new Float64Array(n);r[0]=s[0];if(n>1)r[1]=s[1];
+    return r;
+  }
+  if(n===3){
+    var p00=tp(a[0],b[0]);
+    var p01=tp(a[0],b[1]);
+    var p10=tp(a[1],b[0]);
+    var c2=a[0]*b[2]+a[1]*b[1]+a[2]*b[0];
+    var s1=ts(p00[1],p01[0]);
+    var s2=ts(s1[0],p10[0]);
+    var tail=s1[1]+s2[1]+p01[1]+p10[1]+c2;
+    var s3=ts(s2[0],tail);
+    var r=new Float64Array(3);r[0]=p00[0];r[1]=s3[0];r[2]=s3[1];
+    mwRn(r);return r;
+  }
+  if(n===4){
+    var p00=tp(a[0],b[0]);
+    var p01=tp(a[0],b[1]);
+    var p10=tp(a[1],b[0]);
+    var c2=a[0]*b[2]+a[1]*b[1]+a[2]*b[0];
+    var c3=a[0]*b[3]+a[1]*b[2]+a[2]*b[1]+a[3]*b[0];
+    var s1=ts(p00[1],p01[0]);
+    var s2=ts(s1[0],p10[0]);
+    var tail=s1[1]+s2[1]+p01[1]+p10[1]+c2;
+    var s3=ts(s2[0],tail);
+    var r=new Float64Array(4);r[0]=p00[0];r[1]=s3[0];r[2]=s3[1];r[3]=c3;
+    mwRn(r);return r;
+  }
+  if(n===5){
+    var p00=tp(a[0],b[0]);
+    var p01=tp(a[0],b[1]);
+    var p10=tp(a[1],b[0]);
+    var c2=a[0]*b[2]+a[1]*b[1]+a[2]*b[0];
+    var c3=a[0]*b[3]+a[1]*b[2]+a[2]*b[1]+a[3]*b[0];
+    var c4=a[0]*b[4]+a[1]*b[3]+a[2]*b[2]+a[3]*b[1]+a[4]*b[0];
+    var s1=ts(p00[1],p01[0]);
+    var s2=ts(s1[0],p10[0]);
+    var tail=s1[1]+s2[1]+p01[1]+p10[1]+c2;
+    var s3=ts(s2[0],tail);
+    var r=new Float64Array(5);r[0]=p00[0];r[1]=s3[0];r[2]=s3[1];r[3]=c3;r[4]=c4;
+    mwRn(r);return r;
+  }
+  var r=new Float64Array(n);
+  for(var i=0;i<n;i++)for(var j=0;j<n;j++){
+    if(i+j>=n){r[n-1]+=a[i]*b[j];continue;}
+    var p=tp(a[i],b[j]);mwAcc(r,p[0]);mwAcc(r,p[1]);
+  }
+  mwRn(r);return r;
+}
+
+function mwDiff(a,b){
+  var n=Math.max(a.length,b.length),t=new Float64Array(n);
+  for(var i=0;i<n;i++)t[i]=(a[i]||0)-(b[i]||0);
+  for(var i=n-2;i>=0;i--){var s=ts(t[i],t[i+1]);t[i]=s[0];t[i+1]=s[1];}
+  return t[0]+(t[1]||0);
+}
+function mwF(a){return a[0]+(a[1]||0);}
+function mwRsz(a,n){
+  if(a&&a.length===n)return a;
+  var r=new Float64Array(n),m=a?Math.min(a.length,n):0;
+  for(var i=0;i<m;i++)r[i]=a[i];return r;
+}
+function splitD(v){var h=Math.fround(v);return[h,v-h];}
+function splitDD(h,l){var fh=Math.fround(h);return[fh,(h-fh)+l];}
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+
+var cx=mwOf(-0.74529), cy=mwOf(0.11307);
+var logZoom=0, palIdx=0, colShift=0;
+var colorMode=0;
+var juliaMode=false, juliaR=0, juliaI=0;
+var savedX,savedY,savedZ;
+var COLOR_NAMES=['Smooth','Stripe','Trap ○','Trap +'];
+var NUM_PALETTES=8;
+var PT_THRESH=Math.log(1e4);
+
+// ═══════════════════════════════════════════════════════════════
+// LOCATION SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+var GALLERY=[
+  {x:-0.74529, y:0.11307, name:'Seahorse Valley'},
+  {x:-0.749987, y:0.006992, name:'Elephant Valley'},
+  {x:-0.1010963638, y:0.9562865108, name:'Spiral Arms'},
+  {x:-1.401155189, y:0, name:'Needle'},
+  {x:-0.77568377, y:0.13646737, name:'Double Spiral'},
+  {x:-0.156520166833755, y:1.03224710892283, name:'Lightning'},
+  {x:-1.25066, y:0.02012, name:'Satellite Julia'},
+  {x:-0.745428, y:0.113009, name:'Deep Seahorse'},
+  {x:0.432539, y:0.226592, name:'Starfish'},
+  {x:-0.56269, y:0.63782, name:'Mini Galaxy'},
+  {x:-0.7435669, y:0.1314023, name:'Spiral Canyon'},
+  {x:0.37496, y:0.21694, name:'Dragon Tail'},
+  {x:-0.2011, y:1.11103, name:'Crown'},
+  {x:-0.12256, y:0.74486, name:'Antenna'},
+  {x:-0.5660430288885831, y:-0.4925155967072906, name:'Hidden Bay'},
+  {x:0.2502515540498, y:-0.0000000439453, name:'Spike Tip'},
+  {x:-1.2563637986616, y:0.38238647252, name:'Dendrite'},
+  {x:-0.0452407411, y:0.9868162204, name:'Filament'},
+  {x:0.3592534759227, y:-0.6424547503923, name:'East Spiral'},
+  {x:-1, y:0, name:'Period-2 Bulb'},
+  {x:-1.940813558, y:0, name:'Western Tip'},
+  {x:-0.75, y:0.01, name:'Valley Entrance'}
+];
+var bookmarks=loadBookmarks();
+var galIdx=-1;
+
+function serializeBookmark(b){
+  var s={x:b.x,y:b.y,logZoom:b.logZoom,name:b.name};
+  if(b.mwx)s.mwx=Array.from(b.mwx);
+  if(b.mwy)s.mwy=Array.from(b.mwy);
+  if(b.juliaR!==undefined){s.juliaR=b.juliaR;s.juliaI=b.juliaI;s.isJulia=true;}
+  return s;
+}
+function deserializeBookmark(s){
+  var b={x:s.x,y:s.y,logZoom:s.logZoom,name:s.name};
+  if(s.mwx)b.mwx=new Float64Array(s.mwx);
+  if(s.mwy)b.mwy=new Float64Array(s.mwy);
+  if(s.isJulia){b.juliaR=s.juliaR;b.juliaI=s.juliaI;b.isJulia=true;}
+  return b;
+}
+function loadBookmarks(){
+  try{
+    var raw=localStorage.getItem('fractalAbyss_bookmarks');
+    if(!raw)return[];
+    return JSON.parse(raw).map(deserializeBookmark);
+  }catch(e){return[];}
+}
+function persistBookmarks(){
+  try{localStorage.setItem('fractalAbyss_bookmarks',JSON.stringify(bookmarks.map(serializeBookmark)));}
+  catch(e){}
+}
+
+function allLocations(){return GALLERY.concat(bookmarks);}
+
+function gotoLocation(dir){
+  var list=allLocations();
+  if(list.length===0)return;
+  galIdx=((galIdx+(dir||1))%list.length+list.length)%list.length;
+  var loc=list[galIdx];
+
+  if(loc.isJulia&&!juliaMode){
+    savedX=mwCp(cx);savedY=mwCp(cy);savedZ=logZoom;
+    juliaMode=true;juliaR=loc.juliaR;juliaI=loc.juliaI;
+    logZoom=loc.logZoom||0;
+    MW_N=neededN();
+    cx=loc.mwx?mwRsz(mwCp(loc.mwx),MW_N):mwOf(loc.x);
+    cy=loc.mwy?mwRsz(mwCp(loc.mwy),MW_N):mwOf(loc.y);
+    ensureN();
+    jrf=mwCp(cx);jif=mwCp(cy);
+    lastRefValid=false;lastScale=null;lastJulia=false;wideFloatActive=false;
+    cachedOrbitData=null;cachedOrbitLen=0;
+    toast(loc.name+' [Julia]');
+  }else if(juliaMode&&!loc.isJulia){
+    juliaR=loc.x;juliaI=loc.y;
+    lastJR=null;lastJI=null;lastScale=null;
+    cachedOrbitData=null;cachedOrbitLen=0;
+    toast('Julia c → '+loc.name);
+  }else if(juliaMode&&loc.isJulia){
+    juliaR=loc.juliaR;juliaI=loc.juliaI;
+    logZoom=loc.logZoom||0;
+    MW_N=neededN();
+    cx=loc.mwx?mwRsz(mwCp(loc.mwx),MW_N):mwOf(loc.x);
+    cy=loc.mwy?mwRsz(mwCp(loc.mwy),MW_N):mwOf(loc.y);
+    ensureN();
+    jrf=mwCp(cx);jif=mwCp(cy);
+    lastJR=null;lastJI=null;lastScale=null;
+    cachedOrbitData=null;cachedOrbitLen=0;
+    toast(loc.name);
+  }else{
+    logZoom=loc.logZoom||0;
+    MW_N=neededN();
+    cx=loc.mwx?mwRsz(mwCp(loc.mwx),MW_N):mwOf(loc.x);
+    cy=loc.mwy?mwRsz(mwCp(loc.mwy),MW_N):mwOf(loc.y);
+    ensureN();
+    lastRefValid=false;lastScale=null;wideFloatActive=false;
+    cachedOrbitData=null;cachedOrbitLen=0;
+    toast(loc.name+(loc.logZoom?' ('+Math.floor(loc.logZoom/Math.LN10)+'d)':''));
+  }
+  render();
+}
+
+function saveBookmark(){
+  var name='★ '+(bookmarks.length+1);
+  var depth=Math.floor(logZoom/Math.LN10);
+  var entry={
+    x:mwF(cx), y:mwF(cy),
+    mwx:mwCp(cx), mwy:mwCp(cy),
+    logZoom:logZoom,
+    name:name+' ('+depth+'d)'
+  };
+  if(juliaMode){
+    entry.name='★ Julia '+(bookmarks.length+1)+' ('+depth+'d)';
+    entry.juliaR=juliaR;entry.juliaI=juliaI;entry.isJulia=true;
+  }
+  bookmarks.push(entry);
+  persistBookmarks();
+  galIdx=GALLERY.length+bookmarks.length-1;
+  toast('Saved: '+entry.name);
+}
+
+function deleteLastBookmark(){
+  if(bookmarks.length===0){toast('No bookmarks');return;}
+  var removed=bookmarks.pop();
+  persistBookmarks();
+  if(galIdx>=GALLERY.length+bookmarks.length)galIdx=Math.max(-1,GALLERY.length+bookmarks.length-1);
+  toast('Deleted: '+removed.name);
+}
+
+function neededN(){return Math.max(2,Math.ceil((logZoom/Math.LN10+6)/15));}
+function ensureN(){
+  var n=neededN();
+  if(n!==MW_N){MW_N=n;cx=mwRsz(cx,n);cy=mwRsz(cy,n);jrf=mwRsz(jrf,n);jif=mwRsz(jif,n);mrf=mwRsz(mrf,n);mif=mwRsz(mif,n);}
+}
+
+function zoomFactor(){return Math.exp(logZoom);}
+function maxIter(){return Math.min(8192,Math.max(300,Math.floor(300+80*Math.max(1,Math.abs(logZoom)))));}
+
+// ═══════════════════════════════════════════════════════════════
+// SMART REFERENCE SELECTION
+// ═══════════════════════════════════════════════════════════════
+
+function findBestRef(cx64,cy64,zoom,mi){
+  var halfH=SH*0.5,scale=1.0/(zoom*halfH);
+  var bestPx=0,bestPy=0,bestIter=0,bestCr=cx64,bestCi=cy64,N=4;
+  for(var gy=-N;gy<=N;gy++)for(var gx=-N;gx<=N;gx++){
+    var px=gx*(SW/(2*N+1)),py=gy*(SH/(2*N+1));
+    var cr=cx64+px*scale,ci=cy64+py*scale;
+    var zr=0,zi=0,it=0;
+    for(var i=0;i<mi;i++){var zr2=zr*zr,zi2=zi*zi;if(zr2+zi2>1e8)break;var nzi=2*zr*zi+ci;zr=zr2-zi2+cr;zi=nzi;it++;}
+    if(it>bestIter){bestIter=it;bestPx=px;bestPy=py;bestCr=cr;bestCi=ci;}
+  }
+  return{px:bestPx,py:bestPy,cr:bestCr,ci:bestCi,iter:bestIter};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REFERENCE ORBIT + SA + DE
+// ═══════════════════════════════════════════════════════════════
+
+var refLen=0,refTexW=0,refPixX=0,refPixY=0,refCr=0,refCi=0;
+var saSkip=0,saLogDeriv=0,saOrderUsed=0;
+var saVals=new Float64Array(14);
+var lastScale=null,lastJulia=false,lastJR=null,lastJI=null;
+var lastRefLogZoom=0;
+var jrf=mwNew(),jif=mwNew();
+var mrf=mwNew(),mif=mwNew();
+var lastRefValid=false;
+var wideFloatActive=false;
+var cachedOrbitData=null,cachedOrbitLen=0,cachedMaxIter=0;
+var saRaw=new Float64Array(14);
+
+// ═══════════════════════════════════════════════════════════════
+// v2.1.1 FIX: Reference stability tracking
+// Prevents recompute storms at depth 45-55d by:
+// 1. Tracking whether reference is center-pinned (recompute only on drift)
+// 2. Using logZoom delta to detect zoom-only operations
+// 3. Suppressing recompute when orbit is still long enough
+// ═══════════════════════════════════════════════════════════════
+var refIsCenterPinned = false;  // true when mrf/mif == cx/cy at time of compute
+var lastComputeLogZoom = 0;     // logZoom when reference was last computed
+
+function scaleMatch(a,b){
+  if(a===null||b===null)return false;
+  return Math.abs(a-b)<Math.abs(a)*1e-12;
+}
+
+function mwOrbitLen(cr,ci,maxIt){
+  var zr=mwNew(),zi=mwNew();
+  for(var i=0;i<maxIt;i++){
+    if(zr[0]*zr[0]+zi[0]*zi[0]>1e8)return i;
+    var t1=mwMul(zr,zi);
+    var t2=mwSub(mwMul(zr,zr),mwMul(zi,zi));
+    zr=mwAdd(t2,cr);
+    var t5=mwCp(t1);for(var w=0;w<t5.length;w++)t5[w]*=2;
+    zi=mwAdd(t5,ci);
+  }
+  return maxIt;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v2.1.1 FIX: MW-precision center shift for deep zoom
+// At depth 45d+, pixel-scale deltas are ~1e-45. Using mwAddF is correct
+// but we need to ensure the MW reference tracks the center precisely.
+// New helper: mwAddMW adds two MW arrays with full precision (already exists
+// as mwAdd), but we also add mwMulF for scaling an MW array by a float64.
+// ═══════════════════════════════════════════════════════════════
+function mwMulF(a,f){
+  // Scale each word by f, then renormalize
+  var n=a.length, r=new Float64Array(n);
+  for(var i=0;i<n;i++){
+    var p=tp(a[i],f);
+    r[i]+=p[0];
+    if(i+1<n)r[i+1]+=p[1];
+    else r[n-1]+=p[1];
+  }
+  mwRn(r);
+  return r;
+}
+
+function rescaleSA(s){
+  var sp=s;
+  for(var k=0;k<14;k+=2){saVals[k]=saRaw[k]*sp;saVals[k+1]=saRaw[k+1]*sp;sp*=s;}
+}
+
+function validateSA(s){
+  if(saOrderUsed<3)return false;
+  var maxDpx=Math.max(Math.abs(SW/2-refPixX),Math.abs(-SW/2-refPixX));
+  var maxDpy=Math.max(Math.abs(SH/2-refPixY),Math.abs(-SH/2-refPixY));
+  var dcMax=Math.sqrt(maxDpx*maxDpx+maxDpy*maxDpy)*s;
+  var eps=s*0.01;
+  for(var ord=saOrderUsed;ord>=3;ord--){
+    var sp=Math.pow(dcMax,ord);
+    var am=Math.sqrt(saRaw[2*(ord-1)]*saRaw[2*(ord-1)]+saRaw[2*(ord-1)+1]*saRaw[2*(ord-1)+1]);
+    if(am*sp<=eps*0.1){
+      if(ord<saOrderUsed){
+        saOrderUsed=ord;
+        for(var k=ord;k<7;k++){saRaw[2*k]=0;saRaw[2*k+1]=0;saVals[2*k]=0;saVals[2*k+1]=0;}
+        rescaleSA(s);
+      }
+      return true;
+    }
+  }
+  saSkip=0;saLogDeriv=0;saOrderUsed=0;
+  for(var k=0;k<14;k++)saVals[k]=0;
+  return false;
+}
+
+function applyCachedOrbit(mi,s){
+  if(cachedOrbitLen<mi+1)return false;
+  var wasZoomIn=(lastScale!==null&&s<lastScale*1.001);
+  rescaleSA(s);
+  lastScale=s;
+  refTexW=1;while(refTexW<mi+2)refTexW*=2;
+  var maxTS=gl.getParameter(gl.MAX_TEXTURE_SIZE);if(refTexW>maxTS)refTexW=maxTS;
+  refLen=Math.min(cachedOrbitLen,refTexW);
+  var data=new Float32Array(refTexW*4);
+  var copyLen=Math.min(refLen*4,cachedOrbitData.length);
+  for(var i=0;i<copyLen;i++)data[i]=cachedOrbitData[i];
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,refTex);
+  gl.texImage2D(gl.TEXTURE_2D,0,texInternalFmt,refTexW,1,0,gl.RGBA,gl.FLOAT,data);
+  if(wasZoomIn)return true;
+  return validateSA(s);
+}
+
+function computeRefOrbit(){
+  var mi=maxIter(),z=zoomFactor(),halfH=SH*0.5;
+  var s=1.0/(z*halfH);
+  var needRecompute=false;
+
+  // ═══════════════════════════════════════════════════════════
+  // v2.1.1 FIX: Depth-aware drift thresholds
+  // At depth 45-55d, even tiny reference offsets cause instability.
+  // Use much tighter thresholds for deep wide-float zoom.
+  // ═══════════════════════════════════════════════════════════
+  var depthDecades = logZoom / Math.LN10;
+  var deepZoom = (depthDecades > 30);  // deep zoom threshold
+
+  if(juliaMode){
+    refPixX=mwDiff(jrf,cx)*(z*halfH);
+    refPixY=mwDiff(jif,cy)*(z*halfH);
+
+    if(!lastJulia)needRecompute=true;
+    else if(juliaR!==lastJR||juliaI!==lastJI)needRecompute=true;
+    else if(Math.abs(refPixX)>SW*8||Math.abs(refPixY)>SH*8)needRecompute=true;
+
+    if(!needRecompute&&cachedOrbitData&&cachedOrbitLen>0){
+      if(scaleMatch(lastScale,s)){return;}
+      if(applyCachedOrbit(mi,s))return;
+      needRecompute=true;
+    }
+
+    if(needRecompute){
+      jrf=mwCp(cx);jif=mwCp(cy);
+      refPixX=0;refPixY=0;
+      refCr=mwF(cx);refCi=mwF(cy);
+      lastJulia=true;lastJR=juliaR;lastJI=juliaI;
+      lastScale=null;
+      cachedOrbitLen=0;cachedOrbitData=null;
+    }
+  }else{
+    if(lastRefValid&&!lastJulia){
+      // v2.1.1 FIX: For center-pinned references at deep zoom, recompute
+      // refPixX/Y using MW difference for maximum precision.
+      // When the reference IS the center (refIsCenterPinned), the offset
+      // is exactly the accumulated zoom-toward-cursor shift.
+      refPixX=mwDiff(mrf,cx)*(z*halfH);
+      refPixY=mwDiff(mif,cy)*(z*halfH);
+    }
+
+    if(!lastRefValid||lastJulia)needRecompute=true;
+    // v2.1.1 FIX: Tiered drift thresholds
+    // Deep zoom (>30d): reference must stay within 20% of screen (was 40%)
+    // to prevent wide-float init errors from growing reference offset.
+    // Shallow: keep original generous 16× screen threshold.
+    else if(!deepZoom && (Math.abs(refPixX)>SW*16||Math.abs(refPixY)>SH*16))needRecompute=true;
+    else if(deepZoom && (Math.abs(refPixX)>SW*0.2||Math.abs(refPixY)>SH*0.2))needRecompute=true;
+
+    var predictPsE2=Math.floor(Math.log2(Math.abs(s)));
+    var willRescale2=(wideFloatActive||(predictPsE2<-90&&!juliaMode));
+
+    // v2.1.1 FIX: In wide-float mode at deep zoom, ALWAYS use center reference.
+    // Any offset degrades wide-float SA init precision because the shader uses
+    // hi-parts only of SA coefficients. Center reference (refPix=0,0) eliminates
+    // this error source entirely.
+    if(willRescale2 && (Math.abs(refPixX)>2||Math.abs(refPixY)>2)){
+      // v2.1.1: Tighter threshold (2px vs 40%) for wide-float.
+      // At these depths, even small pixel offsets in SA init accumulate error.
+      needRecompute=true;
+    }
+
+    if(!needRecompute&&cachedOrbitData&&cachedOrbitLen>0){
+      if(scaleMatch(lastScale,s)){return;}
+      // v2.1.1 FIX: Check if orbit buffer is long enough for current maxIter
+      // before attempting cache reuse. This prevents stale short orbits from
+      // being used when maxIter has grown during zoom-in.
+      if(cachedOrbitLen < mi + 1){
+        needRecompute=true;
+      } else {
+        if(applyCachedOrbit(mi,s))return;
+        needRecompute=true;
+      }
+    }
+
+    if(needRecompute){
+      var hadPrevRef=lastRefValid&&!lastJulia;
+      lastJulia=false;lastRefValid=true;
+      lastScale=null;
+      cachedOrbitLen=0;cachedOrbitData=null;
+
+      if(s<1e-15){
+        // v2.1.1 FIX: Always use center reference at deep zoom.
+        // Store a flag so we know this reference is center-pinned.
+        mrf=mwCp(cx);mif=mwCp(cy);
+        refIsCenterPinned=true;
+        var cIt=mwOrbitLen(mrf,mif,mi);
+        if(cIt<mi){
+          refIsCenterPinned=false;
+          var bestIt=cIt;
+          // v2.1.1 FIX: At depth >40d, use smaller grid (5px spacing, ±25px)
+          // to keep reference closer to center, reducing wide-float error.
+          var tNG = deepZoom ? 5 : 5;
+          var tStep = deepZoom ? 5 : 10;
+          for(var gy=-tNG;gy<=tNG;gy++){
+            for(var gx=-tNG;gx<=tNG;gx++){
+              if(gx===0&&gy===0)continue;
+              var tcr=mwAddF(mwCp(cx),gx*tStep*s);
+              var tci=mwAddF(mwCp(cy),gy*tStep*s);
+              var tit=mwOrbitLen(tcr,tci,mi);
+              if(tit>bestIt){bestIt=tit;mrf=tcr;mif=tci;}
+              if(bestIt>=mi)break;
+            }
+            if(bestIt>=mi)break;
+          }
+          if(bestIt<mi&&cIt>=mi*0.80){
+            mrf=mwCp(cx);mif=mwCp(cy);
+            refIsCenterPinned=true;
+          }
+        }
+        refPixX=mwDiff(mrf,cx)*(z*halfH);
+        refPixY=mwDiff(mif,cy)*(z*halfH);
+        refCr=mwF(mrf);refCi=mwF(mif);
+        lastComputeLogZoom=logZoom;
+      }else{
+        refIsCenterPinned=false;
+        var cx64=mwF(cx),cy64=mwF(cy);
+        var ref=findBestRef(cx64,cy64,z,mi);
+        refCr=ref.cr;refCi=ref.ci;
+        mrf=mwOf(refCr);mif=mwOf(refCi);
+        refPixX=mwDiff(mrf,cx)*(z*halfH);
+        refPixY=mwDiff(mif,cy)*(z*halfH);
+        lastComputeLogZoom=logZoom;
+      }
+    }
+  }
+
+  // ── SHARED: MW orbit + SA computation ─────────────────────
+
+  // v2.1.1 FIX: Scale orbit buffer with depth.
+  // At 45d+, maxIter grows to ~660+. Buffer of 2000 is fine for shallow
+  // but at deep zoom, compute more buffer to avoid recompute on zoom-in.
+  // Scale: buffer = max(2000, depthDecades * 60) capped at 8192 - mi.
+  var depthBuffer = Math.max(2000, Math.floor(depthDecades * 60));
+  var orbitMi=Math.min(mi+depthBuffer,8192);
+
+  refTexW=1;
+  while(refTexW<orbitMi+2)refTexW*=2;
+  var maxTS=gl.getParameter(gl.MAX_TEXTURE_SIZE);
+  if(refTexW>maxTS)refTexW=maxTS;
+
+  var data=new Float32Array(refTexW*4);
+  var maxSteps=Math.min(orbitMi+1,refTexW);
+
+  var zr,zi,cr,ci;
+  if(juliaMode){
+    zr=mwCp(jrf);zi=mwCp(jif);cr=mwOf(juliaR);ci=mwOf(juliaI);
+  }else{
+    zr=mwNew();zi=mwNew();cr=mwCp(mrf);ci=mwCp(mif);
+  }
+
+  var Ar=juliaMode?1:0,Ai=0,Br=0,Bi=0,Cr2=0,Ci2=0,Dr=0,Di=0,Er=0,Ei=0,Fr=0,Fi=0,Gr=0,Gi=0;
+  var v3=true,v4=true,v5=true,v6=true,v7=true;
+  var cpuLogDeriv=0,eps=s*0.01;
+  var addOne=juliaMode?0:1;
+
+  saSkip=0;saLogDeriv=0;saOrderUsed=0;
+  for(var k=0;k<14;k++)saVals[k]=0;
+
+  var maxDpx=Math.max(Math.abs(SW/2-refPixX),Math.abs(-SW/2-refPixX));
+  var maxDpy=Math.max(Math.abs(SH/2-refPixY),Math.abs(-SH/2-refPixY));
+  var dcMax=Math.sqrt(maxDpx*maxDpx+maxDpy*maxDpy)*s;
+
+  refLen=0;
+
+  for(var i=0;i<maxSteps;i++){
+    var fh=Math.fround(zr[0]),off=i*4;
+    data[off]=fh;data[off+1]=(zr[0]-fh)+(zr[1]||0);
+    fh=Math.fround(zi[0]);
+    data[off+2]=fh;data[off+3]=(zi[0]-fh)+(zi[1]||0);
+    refLen=i+1;
+
+    if(i>0){
+      var bestOrd=0;
+      var s2=s*s,s3=s2*s,s4=s3*s,s5=s4*s,s6=s5*s,s7=s6*s;
+      if(s7===0){v7=false;v6=false;v5=false;}
+      else if(s5===0){v5=false;}
+      if(v7&&isFinite(Gr)&&Math.sqrt(Gr*Gr+Gi*Gi)*Math.pow(dcMax,7)<eps)bestOrd=7;
+      if(!bestOrd&&v6&&isFinite(Fr)&&Math.sqrt(Fr*Fr+Fi*Fi)*Math.pow(dcMax,6)<eps)bestOrd=6;
+      if(!bestOrd&&v5&&isFinite(Er)&&Math.sqrt(Er*Er+Ei*Ei)*Math.pow(dcMax,5)<eps)bestOrd=5;
+      if(!bestOrd&&v4&&isFinite(Dr)&&Math.sqrt(Dr*Dr+Di*Di)*Math.pow(dcMax,4)<eps)bestOrd=4;
+      if(!bestOrd&&v3&&isFinite(Cr2)&&Math.sqrt(Cr2*Cr2+Ci2*Ci2)*Math.pow(dcMax,3)<eps)bestOrd=3;
+
+      if(bestOrd>=3){
+        saSkip=i;saLogDeriv=cpuLogDeriv;saOrderUsed=bestOrd;
+        saRaw[0]=Ar;saRaw[1]=Ai;
+        saRaw[2]=Br;saRaw[3]=Bi;
+        saRaw[4]=Cr2;saRaw[5]=Ci2;
+        saRaw[6]=(bestOrd>=4)?Dr:0;saRaw[7]=(bestOrd>=4)?Di:0;
+        saRaw[8]=(bestOrd>=5)?Er:0;saRaw[9]=(bestOrd>=5)?Ei:0;
+        saRaw[10]=(bestOrd>=6)?Fr:0;saRaw[11]=(bestOrd>=6)?Fi:0;
+        saRaw[12]=(bestOrd>=7)?Gr:0;saRaw[13]=(bestOrd>=7)?Gi:0;
+      }
+    }
+
+    var zmag2=zr[0]*zr[0]+zi[0]*zi[0];
+    if(zmag2>1e8)break;
+    if(zmag2>1e-20)cpuLogDeriv+=Math.log(2)+0.5*Math.log(zmag2);
+
+    var zrf=zr[0],zif=zi[0];
+    if(v3){
+      var nAr=2*(zrf*Ar-zif*Ai)+addOne,nAi=2*(zrf*Ai+zif*Ar);
+      var nBr=2*(zrf*Br-zif*Bi)+(Ar*Ar-Ai*Ai),nBi=2*(zrf*Bi+zif*Br)+2*Ar*Ai;
+      var nCr=2*(zrf*Cr2-zif*Ci2)+2*(Ar*Br-Ai*Bi),nCi=2*(zrf*Ci2+zif*Cr2)+2*(Ar*Bi+Ai*Br);
+      var nDr=0,nDi=0,nEr=0,nEi=0,nFr=0,nFi=0,nGr=0,nGi=0;
+      if(v4){nDr=2*(zrf*Dr-zif*Di)+2*(Ar*Cr2-Ai*Ci2)+(Br*Br-Bi*Bi);nDi=2*(zrf*Di+zif*Dr)+2*(Ar*Ci2+Ai*Cr2)+2*Br*Bi;}
+      if(v5){nEr=2*(zrf*Er-zif*Ei)+2*(Ar*Dr-Ai*Di)+2*(Br*Cr2-Bi*Ci2);nEi=2*(zrf*Ei+zif*Er)+2*(Ar*Di+Ai*Dr)+2*(Br*Ci2+Bi*Cr2);}
+      if(v6){nFr=2*(zrf*Fr-zif*Fi)+2*(Ar*Er-Ai*Ei)+2*(Br*Dr-Bi*Di)+(Cr2*Cr2-Ci2*Ci2);nFi=2*(zrf*Fi+zif*Fr)+2*(Ar*Ei+Ai*Er)+2*(Br*Di+Bi*Dr)+2*Cr2*Ci2;}
+      if(v7){nGr=2*(zrf*Gr-zif*Gi)+2*(Ar*Fr-Ai*Fi)+2*(Br*Er-Bi*Ei)+2*(Cr2*Dr-Ci2*Di);nGi=2*(zrf*Gi+zif*Gr)+2*(Ar*Fi+Ai*Fr)+2*(Br*Ei+Bi*Er)+2*(Cr2*Di+Ci2*Dr);}
+      Ar=nAr;Ai=nAi;Br=nBr;Bi=nBi;Cr2=nCr;Ci2=nCi;Dr=nDr;Di=nDi;Er=nEr;Ei=nEi;Fr=nFr;Fi=nFi;Gr=nGr;Gi=nGi;
+      if(!isFinite(Gr)||Math.abs(Gr)>1e280){v7=false;Gr=0;Gi=0;}
+      if(!isFinite(Fr)||Math.abs(Fr)>1e280){v6=false;Fr=0;Fi=0;}
+      if(!isFinite(Er)||Math.abs(Er)>1e280){v5=false;Er=0;Ei=0;}
+      if(!isFinite(Dr)||Math.abs(Dr)>1e280){v4=false;Dr=0;Di=0;}
+      if(!isFinite(Cr2)||Math.abs(Cr2)>1e280){v3=false;}
+    }
+
+    var t1=mwMul(zr,zi);
+    var t2=mwMul(zr,zr);
+    var t3=mwMul(zi,zi);
+    var t4=mwSub(t2,t3);
+    zr=mwAdd(t4,cr);
+    var t5=mwCp(t1);for(var w=0;w<t5.length;w++)t5[w]*=2;
+    zi=mwAdd(t5,ci);
+  }
+
+  cachedOrbitData=data;
+  cachedOrbitLen=refLen;
+  cachedMaxIter=mi;
+  lastRefLogZoom=logZoom;
+
+  rescaleSA(s);
+  lastScale=s;
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,refTex);
+  gl.texImage2D(gl.TEXTURE_2D,0,texInternalFmt,refTexW,1,0,gl.RGBA,gl.FLOAT,data);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════
+
+var SW,SH;
+function resize(){SW=innerWidth;SH=innerHeight;canvas.width=SW;canvas.height=SH;gl.viewport(0,0,SW,SH);}
+
+function render(){
+  ensureN();
+  var z=zoomFactor(),mi=maxIter(),halfH=SH*0.5;
+  var usePT=extF&&logZoom>PT_THRESH;
+
+  gl.uniform2f(U.u_res,SW,SH);
+  gl.uniform1i(U.u_mode,usePT?1:0);
+  gl.uniform1i(U.u_maxIter,mi);
+  gl.uniform1f(U.u_palette,palIdx);
+  gl.uniform1f(U.u_colShift,colShift);
+  gl.uniform1f(U.u_logPS,Math.log(z*halfH));
+  gl.uniform1i(U.u_colorMode,colorMode);
+  gl.uniform1i(U.u_julia,juliaMode?1:0);
+
+  var jr=splitD(juliaR),ji=splitD(juliaI);
+  gl.uniform1f(U.u_jrHi,jr[0]);gl.uniform1f(U.u_jrLo,jr[1]);
+  gl.uniform1f(U.u_jiHi,ji[0]);gl.uniform1f(U.u_jiLo,ji[1]);
+
+  if(usePT){
+    computeRefOrbit();
+    var ps=1.0/(z*halfH);
+    var psE=Math.floor(Math.log2(Math.abs(ps)));
+    var psM=ps*Math.pow(2,-psE);
+    gl.uniform1f(U.u_psMant,psM);gl.uniform1f(U.u_psExp,psE);
+    gl.uniform2f(U.u_refPix,refPixX,refPixY);
+    gl.uniform1i(U.u_refLen,refLen);gl.uniform1i(U.u_refTex,0);
+    gl.uniform1f(U.u_refTexW,refTexW);
+
+    var fCr=juliaMode?juliaR:refCr;
+    var fCi=juliaMode?juliaI:refCi;
+    var rcS=splitD(fCr),riS=splitD(fCi);
+    gl.uniform1f(U.u_rcHi,rcS[0]);gl.uniform1f(U.u_rcLo,rcS[1]);
+    gl.uniform1f(U.u_riHi,riS[0]);gl.uniform1f(U.u_riLo,riS[1]);
+
+    gl.uniform1i(U.u_skipN,saSkip);
+    gl.uniform1f(U.u_saLogDeriv,saLogDeriv);
+
+    function saU(uni,idx){
+      var rs=splitD(saVals[idx]),is=splitD(saVals[idx+1]);
+      gl.uniform4f(uni,rs[0],rs[1],is[0],is[1]);
+    }
+    saU(U.u_saA,0);saU(U.u_saB,2);saU(U.u_saC,4);saU(U.u_saD,6);
+    saU(U.u_saE,8);saU(U.u_saF,10);saU(U.u_saG,12);
+
+    if(psE<-90&&!juliaMode&&saSkip>0) wideFloatActive=true;
+    else if(psE>-60||juliaMode||saSkip<=0) wideFloatActive=false;
+    var useRescaled=wideFloatActive?1:0;
+    if(useRescaled){
+      var arS=splitD(saRaw[0]),aiS=splitD(saRaw[1]);
+      gl.uniform4f(U.u_rsaA,arS[0],arS[1],aiS[0],aiS[1]);
+      gl.uniform1i(U.u_wfInitExp,Math.round(psE));
+    }else{
+      gl.uniform4f(U.u_rsaA,0,0,0,0);
+      gl.uniform1i(U.u_wfInitExp,0);
+    }
+    gl.uniform1i(U.u_rescaled,useRescaled);
+
+    var modeLabel=juliaMode?'Julia+SA'+saOrderUsed:'PT+SA'+saOrderUsed;
+    if(useRescaled)modeLabel+='W';
+    document.getElementById('sd-m').textContent=modeLabel;
+    document.getElementById('sd-s').textContent=saSkip;
+  }else{
+    var sv=1.0/(z*halfH);
+    var sE=Math.floor(Math.log2(Math.abs(sv)));
+    var sM=sv*Math.pow(2,-sE);
+    var cxs=splitDD(cx[0],(cx[1]||0)),cys=splitDD(cy[0],(cy[1]||0));
+    gl.uniform1f(U.u_cxhi,cxs[0]);gl.uniform1f(U.u_cxlo,cxs[1]);
+    gl.uniform1f(U.u_cyhi,cys[0]);gl.uniform1f(U.u_cylo,cys[1]);
+    gl.uniform1f(U.u_sMant,sM);gl.uniform1f(U.u_sExp,sE);
+
+    gl.uniform1i(U.u_skipN,0);gl.uniform1f(U.u_saLogDeriv,0);
+    gl.uniform4f(U.u_saA,0,0,0,0);gl.uniform4f(U.u_saB,0,0,0,0);
+    gl.uniform4f(U.u_saC,0,0,0,0);gl.uniform4f(U.u_saD,0,0,0,0);
+    gl.uniform4f(U.u_saE,0,0,0,0);gl.uniform4f(U.u_saF,0,0,0,0);
+    gl.uniform4f(U.u_saG,0,0,0,0);
+
+    document.getElementById('sd-m').textContent=juliaMode?'Julia':'DF';
+    document.getElementById('sd-s').textContent='0';
+    gl.uniform1i(U.u_rescaled,0);
+    gl.uniform4f(U.u_rsaA,0,0,0,0);
+    gl.uniform1i(U.u_wfInitExp,0);
+  }
+
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  updateHUD();
+}
+
+function updateHUD(){
+  var m=Math.exp(logZoom);
+  document.getElementById('sd-z').textContent=m>=1e6?m.toExponential(2)+'×':m.toFixed(2)+'×';
+  document.getElementById('sd-i').textContent=maxIter();
+  document.getElementById('sd-l').textContent='MW'+MW_N;
+  document.getElementById('sd-d').textContent=Math.floor(logZoom/Math.log(10))+'d';
+  document.getElementById('sd-c').textContent=COLOR_NAMES[colorMode];
+  var saLabel=saOrderUsed>0?'SA'+saOrderUsed:'SA0';
+  document.getElementById('hud-sub').textContent=juliaMode
+    ?'Julia · '+saLabel+' · c = '+juliaR.toFixed(5)+' + '+juliaI.toFixed(5)+'i'
+    :'DF-Perturbation · '+saLabel+' · MW'+MW_N;
+  document.getElementById('b-j').className=juliaMode?'active':'';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ZOOM & PAN
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// v2.1.1 FIX #1: Cancellation-free zoom-toward-cursor
+//
+// OLD: dScale = oldScale - newScale
+//   At depth 45d, this subtracts two numbers both ~1e-45.
+//   While float64 handles this OK for small delta, accumulating many
+//   small steps loses precision vs computing the shift directly.
+//
+// NEW: dScale = oldScale * (1 - exp(-delta))
+//   Mathematically identical, but (1 - exp(-delta)) is O(0.1) for
+//   typical scroll delta, so no near-cancellation occurs.
+//   For very small delta, use expm1(-delta) to avoid 1-1 cancellation.
+// ═══════════════════════════════════════════════════════════════
+function applyZoom(delta,sx,sy){
+  var halfH=SH*0.5;
+  var oldScale=1.0/(zoomFactor()*halfH);
+  logZoom+=delta;
+  if(logZoom<0)logZoom=0;
+  ensureN();
+
+  // v2.1.1: Cancellation-free center shift
+  // dScale = oldScale * (1 - exp(-delta)) = -oldScale * expm1(-delta)
+  var dScale = -oldScale * Math.expm1(-delta);
+
+  // v2.1.1 FIX #2: MW-precision center shift at deep zoom
+  // At depth >30d, use MW arithmetic for the center shift to prevent
+  // accumulated float64 rounding from drifting the view.
+  var depthD = logZoom / Math.LN10;
+  if (depthD > 30) {
+    // Compute pixel offsets from center
+    var pxOff = sx - SW * 0.5;
+    var pyOff = -(sy - halfH);
+    // dScale is a float64, pxOff/pyOff are small integers → product is exact-ish
+    // But at extreme depth, dScale * pxOff may lose bits. Use MW shift.
+    var dx = pxOff * dScale;
+    var dy = pyOff * dScale;
+    // At depth 45d, dx ~ 1e-46. mwAddF cascades correctly through MW words.
+    cx = mwAddF(cx, dx);
+    cy = mwAddF(cy, dy);
+  } else {
+    cx=mwAddF(cx,(sx-SW*0.5)*dScale);
+    cy=mwAddF(cy,-(sy-halfH)*dScale);
+  }
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+
+var toastTimer=null;
+function toast(msg){
+  var el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.classList.remove('show');},2000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JULIA TOGGLE
+// ═══════════════════════════════════════════════════════════════
+
+function toggleJulia(){
+  if(!juliaMode){
+    savedX=mwCp(cx);savedY=mwCp(cy);savedZ=logZoom;
+    juliaR=mwF(cx);juliaI=mwF(cy);
+    juliaMode=true;
+    cx=mwOf(0);cy=mwOf(0);logZoom=0;
+    ensureN();
+    jrf=mwNew();jif=mwNew();
+    lastRefValid=false;lastScale=null;wideFloatActive=false;
+    cachedOrbitData=null;cachedOrbitLen=0;
+    toast('Julia: c = '+juliaR.toFixed(5)+' + '+juliaI.toFixed(5)+'i');
+  }else{
+    juliaMode=false;
+    cx=savedX;cy=savedY;logZoom=savedZ;
+    ensureN();
+    lastRefValid=false;lastScale=null;wideFloatActive=false;
+    cachedOrbitData=null;cachedOrbitLen=0;
+    toast('Mandelbrot');
+  }
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PNG EXPORT
+// ═══════════════════════════════════════════════════════════════
+
+function exportPNG(){
+  toast('Saving screenshot...');
+  render();
+  canvas.toBlob(function(blob){
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    var depth=Math.floor(logZoom/Math.log(10));
+    a.download='fractal-abyss-d'+depth+'-'+Date.now()+'.png';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Screenshot saved!');
+  },'image/png');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════════════════════════
+
+function doReset(){
+  logZoom=0;colShift=0;juliaMode=false;MW_N=2;palIdx=0;colorMode=0;
+  cx=mwOf(-0.74529);cy=mwOf(0.11307);
+  lastRefValid=false;lastScale=null;wideFloatActive=false;
+  cachedOrbitData=null;cachedOrbitLen=0;
+  refIsCenterPinned=false;
+  galIdx=-1;
+  render();
+}
+
+function copyCoords(){
+  var depth=Math.floor(logZoom/Math.LN10);
+  function mwSum(a){var s=0;for(var i=a.length-1;i>=0;i--)s+=a[i];return s;}
+  function mwWords(a){
+    var w=[];for(var i=0;i<a.length;i++){if(a[i]!==0)w.push(a[i].toExponential(17));}
+    return w.length?w.join(' + '):'0';
+  }
+  var xApprox=mwSum(cx).toPrecision(Math.min(21,Math.max(17,MW_N*16)));
+  var yApprox=mwSum(cy).toPrecision(Math.min(21,Math.max(17,MW_N*16)));
+  var info='Fractal Abyss — ';
+  if(juliaMode)info+='Julia c=('+juliaR.toPrecision(17)+', '+juliaI.toPrecision(17)+') z₀=';
+  info+='('+xApprox+', '+yApprox+')';
+  info+='\nZoom: '+Math.exp(logZoom).toExponential(6)+' ('+depth+'d)';
+  info+='\nPrecision: MW'+MW_N+' (~'+(MW_N*16)+' digits)';
+  info+='\nIters: '+maxIter()+' | SA: '+saOrderUsed;
+  if(MW_N>2){
+    info+='\nx_words: ['+mwWords(cx)+']';
+    info+='\ny_words: ['+mwWords(cy)+']';
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(info).then(
+      function(){toast('Coordinates copied! (MW'+MW_N+')');},
+      function(){toast(info.split('\n')[0]);}
+    );
+  }else{
+    toast(info.split('\n')[0]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INPUT HANDLERS
+// ═══════════════════════════════════════════════════════════════
+
+var pendZD=0,pendZX=0,pendZY=0,zoomRaf=null;
+function flushZoom(){zoomRaf=null;if(pendZD===0)return;applyZoom(pendZD,pendZX,pendZY);pendZD=0;}
+canvas.addEventListener('wheel',function(e){
+  e.preventDefault();
+  pendZD+=e.deltaY>0?-0.1:0.1;
+  pendZX=e.clientX;pendZY=e.clientY;
+  if(!zoomRaf)zoomRaf=requestAnimationFrame(flushZoom);
+},{passive:false});
+
+var dragging=false,dsx,dsy,dxS,dyS;
+var dragRaf=null,dragDirty=false;
+
+function dragRender(){
+  dragRaf=null;
+  if(!dragDirty)return;
+  dragDirty=false;
+  render();
+  if(dragging)dragRaf=requestAnimationFrame(dragRender);
+}
+
+canvas.addEventListener('mousedown',function(e){
+  dragging=true;dsx=e.clientX;dsy=e.clientY;
+  dxS=mwCp(cx);dyS=mwCp(cy);
+  canvas.style.cursor='grabbing';
+});
+addEventListener('mousemove',function(e){
+  if(!dragging)return;
+  var s=1.0/(zoomFactor()*SH*0.5);
+  cx=mwAddF(dxS,-(e.clientX-dsx)*s);
+  cy=mwAddF(dyS,(e.clientY-dsy)*s);
+  dragDirty=true;
+  if(!dragRaf)dragRaf=requestAnimationFrame(dragRender);
+});
+addEventListener('mouseup',function(){
+  dragging=false;canvas.style.cursor='crosshair';
+  if(dragDirty){dragDirty=false;render();}
+});
+
+var ltd=0,tsx,tsy,txS,tyS;
+canvas.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  if(e.touches.length===1){
+    dragging=true;tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;
+    txS=mwCp(cx);tyS=mwCp(cy);
+  }else if(e.touches.length===2){dragging=false;ltd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}
+},{passive:false});
+canvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if(e.touches.length===1&&dragging){
+    var s=1.0/(zoomFactor()*SH*0.5);
+    cx=mwAddF(txS,-(e.touches[0].clientX-tsx)*s);
+    cy=mwAddF(tyS,(e.touches[0].clientY-tsy)*s);
+    dragDirty=true;
+    if(!dragRaf)dragRaf=requestAnimationFrame(dragRender);
+  }else if(e.touches.length===2){
+    var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if(ltd>0){var mx=(e.touches[0].clientX+e.touches[1].clientX)*0.5,my=(e.touches[0].clientY+e.touches[1].clientY)*0.5;applyZoom(Math.log(d/ltd),mx,my);}
+    ltd=d;
+  }
+},{passive:false});
+canvas.addEventListener('touchend',function(){dragging=false;ltd=0;if(dragDirty){dragDirty=false;render();}});
+
+document.addEventListener('keydown',function(e){
+  var k=e.key,c=e.code;
+  if(k==='='||k==='+'||c==='Equal'){e.preventDefault();applyZoom(0.15,SW/2,SH/2);}
+  else if(k==='-'||k==='_'||c==='Minus'){e.preventDefault();applyZoom(-0.15,SW/2,SH/2);}
+  else if(k==='p'||k==='P'){palIdx=(palIdx+1)%NUM_PALETTES;toast('Palette '+(palIdx+1));render();}
+  else if(k==='c'||k==='C'){colorMode=(colorMode+1)%4;toast(COLOR_NAMES[colorMode]);render();}
+  else if(k==='j'||k==='J')toggleJulia();
+  else if(k==='l'||k==='L')gotoLocation(1);
+  else if(k==='k'||k==='K')gotoLocation(-1);
+  else if(k==='B'&&e.shiftKey)deleteLastBookmark();
+  else if(k==='b'||k==='B')saveBookmark();
+  else if(k==='i'||k==='I')copyCoords();
+  else if(k==='s'||k==='S')exportPNG();
+  else if(k==='r'||k==='R')doReset();
+});
+
+var zI=false,zO=false,czR=null,czL=0;
+function czLoop(t){
+  if(!zI&&!zO){czR=null;return;}
+  if(czL)applyZoom((zI?1:-1)*Math.min(t-czL,50)*0.004,SW/2,SH/2);
+  czL=t;czR=requestAnimationFrame(czLoop);
+}
+function czS(d){if(d==='i')zI=true;else zO=true;if(!czR){czL=0;czR=requestAnimationFrame(czLoop);}}
+function czE(d){if(d==='i')zI=false;else zO=false;}
+
+(function(){
+  var ps=[[document.getElementById('b-zi'),'i'],[document.getElementById('b-zo'),'o']];
+  for(var i=0;i<ps.length;i++)(function(el,d){
+    el.addEventListener('mousedown',function(){czS(d);});
+    el.addEventListener('mouseup',function(){czE(d);});
+    el.addEventListener('mouseleave',function(){czE(d);});
+    el.addEventListener('touchstart',function(e){e.preventDefault();czS(d);});
+    el.addEventListener('touchend',function(){czE(d);});
+  })(ps[i][0],ps[i][1]);
+})();
+
+document.getElementById('b-p').addEventListener('click',function(){palIdx=(palIdx+1)%NUM_PALETTES;toast('Palette '+(palIdx+1));render();});
+document.getElementById('b-c').addEventListener('click',function(){colorMode=(colorMode+1)%4;toast(COLOR_NAMES[colorMode]);render();});
+document.getElementById('b-j').addEventListener('click',toggleJulia);
+document.getElementById('b-l').addEventListener('click',function(){gotoLocation(1);});
+document.getElementById('b-k').addEventListener('click',function(){gotoLocation(-1);});
+document.getElementById('b-b').addEventListener('click',saveBookmark);
+document.getElementById('b-x').addEventListener('click',exportPNG);
+document.getElementById('b-r').addEventListener('click',doReset);
+document.getElementById('b-h').addEventListener('click',function(){document.getElementById('help').classList.toggle('h');});
+document.getElementById('b-go').addEventListener('click',function(){document.getElementById('help').classList.add('h');});
+addEventListener('resize',function(){resize();render();});
+
+// ── Boot ────────────────────────────────────────────────────
+resize();
+render();
+</script>
+</body>
+</html>
