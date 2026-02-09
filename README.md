@@ -364,6 +364,4 @@ Camera stability fixes for depth 45-55d:
 
 ---
 
-## License
-
-Not specified in the source. Contact the author for licensing terms.
+MIT License
